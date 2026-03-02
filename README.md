@@ -80,6 +80,20 @@
   .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
   .btn-ghost { background:var(--surf2); color:var(--muted); border:1px solid var(--border); }
   .btn-ghost:hover { border-color:var(--accent); color:var(--text); }
+  .type-select {
+    background: var(--surf2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 10px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; outline: none; height: 36px;
+    transition: border-color .15s;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+  .type-select:hover { border-color: var(--accent); }
+  .type-select option { background: #1a2235; color: var(--text); }
 
   /* ── Status bar ── */
   .status-bar {
@@ -184,6 +198,111 @@
   .cell.empty-block { background:var(--c-empty-block); color:#6b7280; border-color:#d1d5db; }
   .cell.rental      { background:var(--c-rental);      color:#7c5c1e; border-color:#c9a85c; }
 
+  /* ── Legend popup ── */
+  .leg { position: relative; cursor: default; }
+  .leg-popup {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a2235;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 170px;
+    z-index: 300;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .leg-popup::after {
+    content: '';
+    position: absolute;
+    bottom: -5px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 8px;
+    background: #1a2235;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    rotate: 45deg;
+  }
+  .leg:hover .leg-popup { display: block; }
+  .leg-popup-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; font-weight: 700;
+    color: #93b4e6;
+    margin-bottom: 7px;
+    letter-spacing: 0.04em;
+  }
+  .leg-popup-row {
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 16px;
+    font-size: 10px; color: var(--muted);
+    padding: 2px 0;
+  }
+  .leg-popup-row span:last-child {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700; color: var(--text);
+  }
+  .leg-popup-row .avail  { color: #4ade80; }
+  .leg-popup-row .taken-n { color: #f87171; }
+  .leg-popup-divider { border: none; border-top: 1px solid var(--border); margin: 5px 0; }
+
+  /* ── Unit popup ── */
+  .unit-hdr { position: relative; cursor: pointer; }
+  .unit-popup {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a2235;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-width: 160px;
+    z-index: 150;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+  .unit-popup::before {
+    content: '';
+    position: absolute;
+    top: -5px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 8px;
+    background: #1a2235;
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    rotate: 45deg;
+  }
+  .unit-hdr:hover .unit-popup { display: block; }
+  .unit-popup-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; font-weight: 700;
+    color: #93b4e6;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+  .unit-popup-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; color: var(--muted);
+    padding: 2px 0;
+    gap: 12px;
+  }
+  .unit-popup-row span:last-child {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700; color: var(--text);
+    white-space: nowrap;
+  }
+  .unit-popup-row span:last-child .avail { color: #4ade80; }
+  .unit-popup-row span:last-child .taken-n { color: #f87171; }
+  .unit-popup-divider {
+    border: none; border-top: 1px solid var(--border);
+    margin: 6px 0;
+  }
+
   /* ── Tooltip ── */
   #tooltip {
     position:fixed; background:var(--surf2); border:1px solid var(--border);
@@ -234,6 +353,12 @@
       <label>QUEUE #</label>
       <input type="number" id="queueInput" value="50" min="2" max="5000">
     </div>
+    <select class="type-select" id="typeSelect" title="Select flat type to simulate">
+      <option value="t4">4 Room</option>
+      <option value="t1">2Rm Flexi T1</option>
+      <option value="t2">2Rm Flexi T2</option>
+      <option value="t3">3 Room</option>
+    </select>
     <button class="btn btn-ghost" onclick="resetSim()">↺ Reset</button>
     <button class="btn btn-primary" id="runBtn" onclick="runSim()">
       <div class="spinner"></div>
@@ -251,10 +376,10 @@
 </div>
 
 <div class="legend-bar">
-  <div class="leg"><div class="leg-sw" style="background:var(--c-t1)"></div>2Rm Flexi T1</div>
-  <div class="leg"><div class="leg-sw" style="background:var(--c-t2)"></div>2Rm Flexi T2</div>
-  <div class="leg"><div class="leg-sw" style="background:var(--c-t3)"></div>3 Room</div>
-  <div class="leg"><div class="leg-sw" style="background:var(--c-t4)"></div>4 Room</div>
+  <div class="leg" data-legtype="t1"><div class="leg-sw" style="background:var(--c-t1)"></div>2Rm Flexi T1<div class="leg-popup" id="legpop-t1"></div></div>
+  <div class="leg" data-legtype="t2"><div class="leg-sw" style="background:var(--c-t2)"></div>2Rm Flexi T2<div class="leg-popup" id="legpop-t2"></div></div>
+  <div class="leg" data-legtype="t3"><div class="leg-sw" style="background:var(--c-t3)"></div>3 Room<div class="leg-popup" id="legpop-t3"></div></div>
+  <div class="leg" data-legtype="t4"><div class="leg-sw" style="background:var(--c-t4)"></div>4 Room<div class="leg-popup" id="legpop-t4"></div></div>
   <div class="leg"><div class="leg-sw" style="background:var(--c-taken)"></div>Taken (X)</div>
   <div class="leg"><div class="leg-sw" style="background:var(--c-sky-terrace)"></div>Sky Terrace</div>
   <div class="leg"><div class="leg-sw" style="background:var(--c-sky-garden)"></div>Sky Garden</div>
@@ -399,12 +524,46 @@ ALL_STACKS.forEach(({s}) => {
 // ════════════════════════════════════════════════════════════
 // SIMULATION DATA
 // ════════════════════════════════════════════════════════════
-const BLOCK_PROB = {"100A":0.48,"104A":0.18,"105A":0.34};
-const STACK_PROB = {
-  "100A":{109:0.30,111:0.12,113:0.13,117:0.10,119:0.22,127:0.13},
-  "104A":{155:0.18,157:0.08,159:0.13,163:0.11,165:0.28,171:0.11,173:0.11},
-  "105A":{183:0.28,191:0.08,193:0.26,195:0.11,197:0.09,199:0.18},
+// Probability configs per flat type
+// t1, t2, t3 probabilities TBD — placeholders marked so they're easy to update
+const TYPE_PROBS = {
+  t4: {
+    blockProb: {"100A":0.48,"104A":0.18,"105A":0.34},
+    stackProb: {
+      "100A":{109:0.30,111:0.12,113:0.13,117:0.10,119:0.22,127:0.13},
+      "104A":{155:0.18,157:0.08,159:0.13,163:0.11,165:0.28,171:0.11,173:0.11},
+      "105A":{183:0.28,191:0.08,193:0.26,195:0.11,197:0.09,199:0.18},
+    },
+  },
+  t1: {
+    blockProb: {"100A":0.33,"104A":0.33,"105A":0.34},  // placeholder — TBD
+    stackProb: {
+      "100A":{101:0.50,103:0.50},                       // placeholder — TBD
+      "104A":{147:0.50,149:0.50},                       // placeholder — TBD
+      "105A":{175:0.50,177:0.50},                       // placeholder — TBD
+    },
+  },
+  t2: {
+    blockProb: {"100A":0.33,"104A":0.33,"105A":0.34},  // placeholder — TBD
+    stackProb: {
+      "100A":{105:0.25,107:0.25,121:0.17,123:0.17,125:0.16},  // placeholder — TBD
+      "104A":{151:0.34,153:0.33,167:0.33},                     // placeholder — TBD
+      "105A":{179:0.25,181:0.25,187:0.25,189:0.25},            // placeholder — TBD
+    },
+  },
+  t3: {
+    blockProb: {"100A":0.34,"104A":0.33,"105A":0.33},  // placeholder — TBD
+    stackProb: {
+      "100A":{115:1.0},   // placeholder — TBD
+      "104A":{161:1.0},   // placeholder — TBD
+      "105A":{185:1.0},   // placeholder — TBD
+    },
+  },
 };
+
+// Active probabilities — set at runtime from dropdown
+let BLOCK_PROB = TYPE_PROBS.t4.blockProb;
+let STACK_PROB = TYPE_PROBS.t4.stackProb;
 const BANDS = [
   {label:"highest",min:null,max:null,p:0.32},
   {label:"41-46",  min:41,  max:46,  p:0.11},
@@ -440,6 +599,78 @@ function spanPx(fromU, toU) {
     if (s.u === toU)   inSpan = false;
   });
   return count * CELL_W;
+}
+
+// ════════════════════════════════════════════════════════════
+// UNIT POPUP — count available/total per stack
+// ════════════════════════════════════════════════════════════
+function getStackCounts(unit) {
+  const s    = S[unit];
+  const skip = SKIP_FL[unit] || new Set();
+  const rental = RENTALS[unit];
+  let total = 0, takenCount = 0;
+  for (let fl = MIN_FL; fl <= s.mf; fl++) {
+    if (skip.has(fl)) continue;
+    if (rental && fl >= rental.min && fl <= rental.max) continue;
+    total++;
+    if (taken[unit][fl]) takenCount++;
+  }
+  return { total, taken: takenCount, avail: total - takenCount };
+}
+
+function refreshPopup(unit) {
+  const pop = document.getElementById(`popup-${unit}`);
+  if (!pop) return;
+  const s = S[unit];
+  const { total, taken: t, avail } = getStackCounts(unit);
+  const typeNames = {t1:'2Rm Flexi T1',t2:'2Rm Flexi T2',t3:'3 Room',t4:'4 Room'};
+  pop.innerHTML = `
+    <div class="unit-popup-title">#${unit} · ${typeNames[s.t]}</div>
+    <div class="unit-popup-row"><span>Available</span><span><span class="avail">${avail}</span></span></div>
+    <div class="unit-popup-row"><span>Taken</span><span><span class="taken-n">${t}</span></span></div>
+    <hr class="unit-popup-divider">
+    <div class="unit-popup-row"><span>Total units</span><span>${total}</span></div>
+  `;
+}
+
+function refreshAllPopups() {
+  ALL_STACKS.forEach(({s}) => refreshPopup(s.u));
+}
+
+// ════════════════════════════════════════════════════════════
+// LEGEND POPUP — count available/total per flat type
+// ════════════════════════════════════════════════════════════
+function getTypeCounts(type) {
+  let total = 0, takenCount = 0;
+  ALL_STACKS.forEach(({s}) => {
+    if (s.t !== type) return;
+    const skip   = SKIP_FL[s.u] || new Set();
+    const rental = RENTALS[s.u];
+    for (let fl = MIN_FL; fl <= s.mf; fl++) {
+      if (skip.has(fl)) continue;
+      if (rental && fl >= rental.min && fl <= rental.max) continue;
+      total++;
+      if (taken[s.u][fl]) takenCount++;
+    }
+  });
+  return { total, taken: takenCount, avail: total - takenCount };
+}
+
+function refreshLegendPopups() {
+  const TYPE_FULL_LONG = {t1:'2 Room Flexi Type 1', t2:'2 Room Flexi Type 2', t3:'3 Room', t4:'4 Room'};
+  ['t1','t2','t3','t4'].forEach(type => {
+    const pop = document.getElementById(`legpop-${type}`);
+    if (!pop) return;
+    const { total, taken: t, avail } = getTypeCounts(type);
+    pop.innerHTML = `
+      <div class="leg-popup-title">${TYPE_FULL_LONG[type]}</div>
+      <div class="leg-popup-row"><span>Available</span><span class="avail">${avail}</span></div>
+      <div class="leg-popup-row"><span>Taken</span><span class="taken-n">${t}</span></div>
+      <hr class="leg-popup-divider">
+      <div class="leg-popup-row"><span>Total units</span><span>${total}</span></div>
+      <div class="leg-popup-row"><span>% remaining</span><span>${total ? Math.round(avail/total*100) : 0}%</span></div>
+    `;
+  });
 }
 
 // ════════════════════════════════════════════════════════════
@@ -490,7 +721,8 @@ function buildGrid() {
     if (idx > 0 && ALL_STACKS[idx-1].b !== b) unitRow.appendChild(makeGap(BLK_GAP));
     const el = document.createElement('div');
     el.className = 'unit-hdr';
-    el.innerHTML = `<span class="un">#${s.u}</span><span class="ut">${TYPE_LABEL[s.t]}</span>`;
+    el.dataset.unit = s.u;
+    el.innerHTML = `<span class="un">#${s.u}</span><span class="ut">${TYPE_LABEL[s.t]}</span><div class="unit-popup" id="popup-${s.u}"></div>`;
     unitRow.appendChild(el);
   });
   grid.appendChild(unitRow);
@@ -578,6 +810,8 @@ function buildGrid() {
   }
 
   updateStats();
+  refreshAllPopups();
+  refreshLegendPopups();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -638,6 +872,12 @@ async function runSim() {
   const q = parseInt(document.getElementById('queueInput').value);
   if (isNaN(q) || q < 2) { toast('Enter a queue number ≥ 2', 'err'); return; }
 
+  // Set active probability tables from dropdown
+  const selectedType = document.getElementById('typeSelect').value;
+  const probs = TYPE_PROBS[selectedType];
+  BLOCK_PROB = probs.blockProb;
+  STACK_PROB = probs.stackProb;
+
   const btn = document.getElementById('runBtn');
   btn.disabled = true; btn.classList.add('running');
 
@@ -663,6 +903,8 @@ async function runSim() {
   });
 
   updateStats();
+  refreshAllPopups();
+  refreshLegendPopups();
   statusEl.textContent = `Done — ${updates.length} taken`;
   btn.disabled = false; btn.classList.remove('running');
 
@@ -683,6 +925,8 @@ function resetSim() {
     });
   });
   updateStats();
+  refreshAllPopups();
+  refreshLegendPopups();
   document.getElementById('simStatus').textContent = 'Ready';
   toast('↺ Simulation reset', '');
 }
