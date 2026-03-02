@@ -334,6 +334,46 @@
   .running .spinner   { display:block; }
   .running .btn-label { display:none; }
 
+  /* ── Settings panel ── */
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.55);
+    z-index: 400; display: none;
+  }
+  .settings-overlay.show { display: block; }
+  .settings-panel {
+    position: fixed; top: 0; right: 0; height: 100%; width: min(520px, 92vw);
+    background: #121827; border-left: 1px solid var(--border);
+    box-shadow: -12px 0 28px rgba(0,0,0,.45);
+    padding: 18px 20px 24px; z-index: 450;
+    transform: translateX(100%); transition: transform .22s ease;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .settings-panel.show { transform: translateX(0); }
+  .set-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .set-head h2 { font-family: 'Space Mono', monospace; font-size: 14px; letter-spacing: .04em; }
+  .set-sub { font-size: 12px; color: var(--muted); }
+  .set-body { overflow: auto; padding-right: 4px; display:flex; flex-direction:column; gap:14px; }
+  .set-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 12px;
+  }
+  .set-card h3 { font-size: 12px; margin-bottom: 8px; color: #93b4e6; letter-spacing: .03em; }
+  .set-row {
+    display: grid; grid-template-columns: 1fr 88px; gap: 10px; align-items: center;
+    font-size: 12px; color: var(--text); padding: 4px 0;
+  }
+  .set-row input {
+    width: 100%; background: #0f1424; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px;
+    padding: 6px 7px; outline: none;
+  }
+  .set-row input:focus { border-color: var(--accent); }
+  .set-row small { color: var(--muted); }
+  .set-foot {
+    margin-top: auto; border-top: 1px solid var(--border); padding-top: 12px;
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
   @keyframes popIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
   .just-taken { animation:popIn .18s ease forwards; }
 </style>
@@ -359,6 +399,7 @@
       <option value="t2">2Rm Flexi T2</option>
       <option value="t3">3 Room</option>
     </select>
+    <button class="btn btn-ghost" onclick="openSettings()">⚙ Settings</button>
     <button class="btn btn-ghost" onclick="resetSim()">↺ Reset</button>
     <button class="btn btn-primary" id="runBtn" onclick="runSim()">
       <div class="spinner"></div>
@@ -396,6 +437,24 @@
 
 <div id="tooltip"></div>
 <div id="toast"></div>
+
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<aside class="settings-panel" id="settingsPanel" aria-hidden="true">
+  <div class="set-head">
+    <div>
+      <h2>Probability Settings</h2>
+      <p class="set-sub">Adjust block and stack probabilities for the selected flat type.</p>
+    </div>
+    <button class="btn btn-ghost" onclick="closeSettings()">✕</button>
+  </div>
+
+  <div class="set-body" id="settingsBody"></div>
+
+  <div class="set-foot">
+    <button class="btn btn-ghost" onclick="resetProbabilities()">Reset Default</button>
+    <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+  </div>
+</aside>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -560,6 +619,8 @@ const TYPE_PROBS = {
     },
   },
 };
+
+const DEFAULT_TYPE_PROBS = JSON.parse(JSON.stringify(TYPE_PROBS));
 
 // Active probabilities — set at runtime from dropdown
 let BLOCK_PROB = TYPE_PROBS.t4.blockProb;
@@ -930,6 +991,114 @@ function resetSim() {
   refreshLegendPopups();
   document.getElementById('simStatus').textContent = 'Ready';
   toast('↺ Simulation reset', '');
+}
+
+// ════════════════════════════════════════════════════════════
+// SETTINGS PANEL
+// ════════════════════════════════════════════════════════════
+function getSelectedType() {
+  return document.getElementById('typeSelect').value;
+}
+
+function openSettings() {
+  renderSettingsForm();
+  document.getElementById('settingsOverlay').classList.add('show');
+  const panel = document.getElementById('settingsPanel');
+  panel.classList.add('show');
+  panel.setAttribute('aria-hidden', 'false');
+}
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('show');
+  const panel = document.getElementById('settingsPanel');
+  panel.classList.remove('show');
+  panel.setAttribute('aria-hidden', 'true');
+}
+
+function renderSettingsForm() {
+  const type = getSelectedType();
+  const cfg = TYPE_PROBS[type];
+  const body = document.getElementById('settingsBody');
+  const typeNames = { t1:'2Rm Flexi T1', t2:'2Rm Flexi T2', t3:'3 Room', t4:'4 Room' };
+
+  const blockRows = Object.entries(cfg.blockProb).map(([block, prob]) => `
+    <div class="set-row">
+      <span>Block ${block}</span>
+      <input type="number" min="0" max="1" step="0.01" data-kind="block" data-key="${block}" value="${Number(prob).toFixed(2)}">
+    </div>
+  `).join('');
+
+  const stackCards = Object.entries(cfg.stackProb).map(([block, stacks]) => {
+    const rows = Object.entries(stacks).map(([unit, prob]) => `
+      <div class="set-row">
+        <span>#${unit} <small>(Block ${block})</small></span>
+        <input type="number" min="0" max="1" step="0.01" data-kind="stack" data-block="${block}" data-key="${unit}" value="${Number(prob).toFixed(2)}">
+      </div>
+    `).join('');
+    return `<div class="set-card"><h3>Stack Probabilities · Block ${block}</h3>${rows}</div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="set-card">
+      <h3>Selected Type · ${typeNames[type]}</h3>
+      ${blockRows}
+    </div>
+    ${stackCards}
+  `;
+}
+
+function validateProbGroup(entries, label) {
+  const sum = entries.reduce((acc, x) => acc + x.v, 0);
+  if (Math.abs(sum - 1) > 0.01) {
+    toast(`${label} probabilities must sum to 1.00 (current ${sum.toFixed(2)})`, 'err');
+    return false;
+  }
+  return true;
+}
+
+function saveSettings() {
+  const type = getSelectedType();
+  const cfg = TYPE_PROBS[type];
+  const inputs = [...document.querySelectorAll('#settingsBody input')];
+
+  const blockEntries = inputs.filter(i => i.dataset.kind === 'block').map(i => ({ key: i.dataset.key, v: Number(i.value) }));
+  const stackEntries = inputs.filter(i => i.dataset.kind === 'stack').map(i => ({ block: i.dataset.block, key: i.dataset.key, v: Number(i.value) }));
+
+  if (blockEntries.some(x => Number.isNaN(x.v) || x.v < 0 || x.v > 1) || stackEntries.some(x => Number.isNaN(x.v) || x.v < 0 || x.v > 1)) {
+    toast('All probabilities must be numbers between 0 and 1', 'err');
+    return;
+  }
+
+  if (!validateProbGroup(blockEntries, 'Block')) return;
+
+  const byBlock = {};
+  stackEntries.forEach(x => {
+    byBlock[x.block] = byBlock[x.block] || [];
+    byBlock[x.block].push({ key: x.key, v: x.v });
+  });
+
+  for (const [block, rows] of Object.entries(byBlock)) {
+    if (!validateProbGroup(rows, `Stack ${block}`)) return;
+  }
+
+  blockEntries.forEach(x => { cfg.blockProb[x.key] = x.v; });
+  stackEntries.forEach(x => { cfg.stackProb[x.block][x.key] = x.v; });
+
+  const probs = TYPE_PROBS[type];
+  BLOCK_PROB = probs.blockProb;
+  STACK_PROB = probs.stackProb;
+  closeSettings();
+  toast('✅ Probability settings saved', 'ok');
+}
+
+function resetProbabilities() {
+  const type = getSelectedType();
+  TYPE_PROBS[type] = JSON.parse(JSON.stringify(DEFAULT_TYPE_PROBS[type]));
+  const probs = TYPE_PROBS[type];
+  BLOCK_PROB = probs.blockProb;
+  STACK_PROB = probs.stackProb;
+  renderSettingsForm();
+  toast('↺ Defaults restored for selected flat type', 'ok');
 }
 
 // ════════════════════════════════════════════════════════════
