@@ -80,6 +80,7 @@
   .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
   .btn-ghost { background:var(--surf2); color:var(--muted); border:1px solid var(--border); }
   .btn-ghost:hover { border-color:var(--accent); color:var(--text); }
+  .btn-settings { color: var(--text); }
   .type-select {
     background: var(--surf2); border: 1px solid var(--border); border-radius: 8px;
     padding: 5px 10px; color: var(--text);
@@ -336,6 +337,47 @@
 
   @keyframes popIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
   .just-taken { animation:popIn .18s ease forwards; }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 10, 21, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    padding: 20px;
+  }
+  .modal.hidden { display: none; }
+  .modal-card {
+    width: min(920px, 100%);
+    max-height: 86vh;
+    overflow: auto;
+    background: #111726;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .settings-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .settings-head h2 { font-size: 18px; font-family:'Space Mono', monospace; }
+  .settings-help { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .settings-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .settings-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 10px;
+  }
+  .settings-card h3 { font-size: 12px; margin-bottom: 8px; color: #93b4e6; font-family:'Space Mono', monospace; }
+  .settings-row { display:grid; grid-template-columns: 1fr 84px; gap:8px; align-items:center; margin-bottom:6px; }
+  .settings-row label { font-size: 12px; color: var(--text); }
+  .settings-row input {
+    width: 100%; background: #0e1420; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); padding: 5px 7px; font-size: 12px;
+  }
+  .settings-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .settings-total { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  @media (max-width: 850px) { .settings-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -359,6 +401,7 @@
       <option value="t2">2Rm Flexi T2</option>
       <option value="t3">3 Room</option>
     </select>
+    <button class="btn btn-ghost btn-settings" onclick="openSettings()">⚙ Settings</button>
     <button class="btn btn-ghost" onclick="resetSim()">↺ Reset</button>
     <button class="btn btn-primary" id="runBtn" onclick="runSim()">
       <div class="spinner"></div>
@@ -396,6 +439,21 @@
 
 <div id="tooltip"></div>
 <div id="toast"></div>
+
+<div class="modal hidden" id="settingsModal">
+  <div class="modal-card">
+    <div class="settings-head">
+      <h2>Probability Settings</h2>
+      <button class="btn btn-ghost" onclick="closeSettings()">Close</button>
+    </div>
+    <div class="settings-help">Edit values as percentages. Each probability group should total about 100%.</div>
+    <div id="settingsContent"></div>
+    <div class="settings-actions">
+      <button class="btn btn-ghost" onclick="resetSettingsToDefault()">Reset to Default</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -526,7 +584,7 @@ ALL_STACKS.forEach(({s}) => {
 // ════════════════════════════════════════════════════════════
 // Probability configs per flat type
 // t1, t2, t3 probabilities TBD — placeholders marked so they're easy to update
-const TYPE_PROBS = {
+const DEFAULT_TYPE_PROBS = {
   t4: {
     blockProb: {"100A":0.48,"104A":0.18,"105A":0.34},
     stackProb: {
@@ -561,10 +619,7 @@ const TYPE_PROBS = {
   },
 };
 
-// Active probabilities — set at runtime from dropdown
-let BLOCK_PROB = TYPE_PROBS.t4.blockProb;
-let STACK_PROB = TYPE_PROBS.t4.stackProb;
-const BANDS = [
+const DEFAULT_BANDS = [
   {label:"highest",min:null,max:null,p:0.32},
   {label:"41-46",  min:41,  max:46,  p:0.11},
   {label:"36-40",  min:36,  max:40,  p:0.11},
@@ -576,6 +631,139 @@ const BANDS = [
   {label:"6-10",   min:6,   max:10,  p:0.03},
   {label:"2-5",    min:2,   max:5,   p:0.04},
 ];
+
+function deepClone(obj) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
+let TYPE_PROBS = deepClone(DEFAULT_TYPE_PROBS);
+let BANDS = deepClone(DEFAULT_BANDS);
+
+const SETTINGS_KEY = 'hdb_bto_sim_probs_v1';
+
+function loadSettingsFromStorage() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed.typeProbs) TYPE_PROBS = parsed.typeProbs;
+    if (parsed.bands) BANDS = parsed.bands;
+  } catch (_) {
+    TYPE_PROBS = deepClone(DEFAULT_TYPE_PROBS);
+    BANDS = deepClone(DEFAULT_BANDS);
+  }
+}
+
+// Active probabilities — set at runtime from dropdown
+let BLOCK_PROB = TYPE_PROBS.t4.blockProb;
+let STACK_PROB = TYPE_PROBS.t4.stackProb;
+
+function buildSettingsSection(title, rows, keyPrefix) {
+  const card = document.createElement('div');
+  card.className = 'settings-card';
+  card.innerHTML = `<h3>${title}</h3>`;
+  rows.forEach(row => {
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-row';
+    wrap.innerHTML = `<label>${row.label}</label><input type="number" min="0" max="100" step="0.1" data-probkey="${keyPrefix}${row.key}" value="${row.value}">`;
+    card.appendChild(wrap);
+  });
+  return card;
+}
+
+function openSettings() {
+  renderSettings();
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function renderSettings() {
+  const container = document.getElementById('settingsContent');
+  container.innerHTML = '';
+
+  const grid = document.createElement('div');
+  grid.className = 'settings-grid';
+
+  Object.entries(TYPE_PROBS).forEach(([type, cfg]) => {
+    const blocksRows = Object.entries(cfg.blockProb).map(([blk, val]) => ({ label: `Block ${blk}`, key: blk, value: (val * 100).toFixed(1) }));
+    const blockCard = buildSettingsSection(`${type.toUpperCase()} · Block Probabilities`, blocksRows, `${type}|block|`);
+    const blockTotal = document.createElement('div');
+    blockTotal.className = 'settings-total';
+    blockTotal.textContent = `Total: ${(Object.values(cfg.blockProb).reduce((a,b)=>a+b,0)*100).toFixed(1)}%`;
+    blockCard.appendChild(blockTotal);
+    grid.appendChild(blockCard);
+
+    Object.entries(cfg.stackProb).forEach(([blk, stackMap]) => {
+      const stackRows = Object.entries(stackMap).map(([unit, val]) => ({ label: `#${unit}`, key: `${blk}|${unit}`, value: (val * 100).toFixed(1) }));
+      const stackCard = buildSettingsSection(`${type.toUpperCase()} · ${blk} Stack Probabilities`, stackRows, `${type}|stack|`);
+      const stackTotal = document.createElement('div');
+      stackTotal.className = 'settings-total';
+      stackTotal.textContent = `Total: ${(Object.values(stackMap).reduce((a,b)=>a+b,0)*100).toFixed(1)}%`;
+      stackCard.appendChild(stackTotal);
+      grid.appendChild(stackCard);
+    });
+  });
+
+  const bandRows = BANDS.map((band, idx) => ({ label: `Floor band ${band.label}`, key: idx, value: (band.p * 100).toFixed(1) }));
+  const bandCard = buildSettingsSection('Floor Band Probabilities', bandRows, 'band|');
+  const bandTotal = document.createElement('div');
+  bandTotal.className = 'settings-total';
+  bandTotal.textContent = `Total: ${(BANDS.reduce((a,b)=>a+b.p,0)*100).toFixed(1)}%`;
+  bandCard.appendChild(bandTotal);
+  grid.appendChild(bandCard);
+
+  container.appendChild(grid);
+}
+
+function saveSettings() {
+  const nextTypeProbs = deepClone(TYPE_PROBS);
+  const nextBands = deepClone(BANDS);
+
+  const inputs = document.querySelectorAll('[data-probkey]');
+  inputs.forEach(input => {
+    const value = Math.max(0, Number(input.value) || 0) / 100;
+    const parts = input.dataset.probkey.split('|');
+    if (parts[0] === 'band') {
+      nextBands[Number(parts[1])].p = value;
+      return;
+    }
+    const [type, scope, a, b] = parts;
+    if (scope === 'block') nextTypeProbs[type].blockProb[a] = value;
+    if (scope === 'stack') nextTypeProbs[type].stackProb[a][b] = value;
+  });
+
+  const totals = [];
+  Object.entries(nextTypeProbs).forEach(([type, cfg]) => {
+    totals.push({ name: `${type.toUpperCase()} block`, sum: Object.values(cfg.blockProb).reduce((x,y)=>x+y,0) });
+    Object.entries(cfg.stackProb).forEach(([blk, stackMap]) => totals.push({ name: `${type.toUpperCase()} ${blk} stacks`, sum: Object.values(stackMap).reduce((x,y)=>x+y,0) }));
+  });
+  totals.push({ name: 'Floor bands', sum: nextBands.reduce((x,y)=>x+y.p,0) });
+
+  const bad = totals.find(t => Math.abs(t.sum - 1) > 0.02);
+  if (bad) {
+    toast(`⚠ ${bad.name} total is ${(bad.sum*100).toFixed(1)}%. Please make it near 100%.`, 'err');
+    return;
+  }
+
+  TYPE_PROBS = nextTypeProbs;
+  BANDS = nextBands;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({ typeProbs: TYPE_PROBS, bands: BANDS }));
+  closeSettings();
+  resetSim();
+  toast('✅ Probability settings saved.', 'ok');
+}
+
+function resetSettingsToDefault() {
+  TYPE_PROBS = deepClone(DEFAULT_TYPE_PROBS);
+  BANDS = deepClone(DEFAULT_BANDS);
+  localStorage.removeItem(SETTINGS_KEY);
+  renderSettings();
+  resetSim();
+  toast('Default probability settings restored.', 'ok');
+}
 
 // ════════════════════════════════════════════════════════════
 // STATE
@@ -953,6 +1141,9 @@ function toast(msg, type='') {
 // ════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════
+loadSettingsFromStorage();
+BLOCK_PROB = TYPE_PROBS.t4.blockProb;
+STACK_PROB = TYPE_PROBS.t4.stackProb;
 buildGrid();
 
 document.getElementById('queueInput').addEventListener('keydown', (e) => {
@@ -961,6 +1152,10 @@ document.getElementById('queueInput').addEventListener('keydown', (e) => {
 
 document.getElementById('typeSelect').addEventListener('change', () => {
   resetSim();
+});
+
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target.id === 'settingsModal') closeSettings();
 });
 </script>
 </body>
