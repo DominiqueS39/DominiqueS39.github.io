@@ -203,7 +203,7 @@
   .leg-popup {
     display: none;
     position: absolute;
-    top: calc(100% + 8px);
+    bottom: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
     background: #1a2235;
@@ -219,12 +219,12 @@
   .leg-popup::after {
     content: '';
     position: absolute;
-    top: -5px; left: 50%;
+    bottom: -5px; left: 50%;
     transform: translateX(-50%);
     width: 8px; height: 8px;
     background: #1a2235;
-    border-left: 1px solid var(--border);
-    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
     rotate: 45deg;
   }
   .leg:hover .leg-popup { display: block; }
@@ -871,7 +871,6 @@ function simOne() {
 async function runSim() {
   const q = parseInt(document.getElementById('queueInput').value);
   if (isNaN(q) || q < 2) { toast('Enter a queue number ≥ 2', 'err'); return; }
-  if (q > 5000) { toast('Queue number must be ≤ 5000', 'err'); return; }
 
   // Set active probability tables from dropdown
   const selectedType = document.getElementById('typeSelect').value;
@@ -954,14 +953,6 @@ function toast(msg, type='') {
 // INIT
 // ════════════════════════════════════════════════════════════
 buildGrid();
-
-document.getElementById('queueInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') runSim();
-});
-
-document.getElementById('typeSelect').addEventListener('change', () => {
-  resetSim();
-});
 </script>
 </body>
 </html>
